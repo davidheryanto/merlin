@@ -61,6 +61,7 @@ func TestVersionsService_FindById(t *testing.T) {
 			ModelID:     m.ID,
 			RunID:       "1",
 			ArtifactURI: "gcs:/mlp/1/1",
+			Labels:      map[string]interface{}{"foo": "bar"},
 		}
 		db.Create(&v)
 
@@ -148,6 +149,7 @@ func TestVersionsService_ListVersions(t *testing.T) {
 				ModelID:     m.ID,
 				RunID:       fmt.Sprintf("%d", i+1),
 				ArtifactURI: "gcs:/mlp/1/1",
+				Labels:      map[string]interface{}{"foo": "bar"},
 			}
 			db.Create(&v)
 			endpoint1 := &models.VersionEndpoint{
