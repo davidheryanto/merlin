@@ -16,7 +16,7 @@
 
 import React, { useEffect, useState, Fragment } from "react";
 import {
-  EuiBadge, EuiBadgeGroup,
+  EuiBadge,
   EuiButtonEmpty,
   EuiButtonIcon,
   EuiCallOut,
@@ -28,10 +28,11 @@ import {
   EuiIcon,
   EuiInMemoryTable,
   EuiLink,
-  EuiLoadingChart, EuiSearchBar,
+  EuiLoadingChart,
   EuiText,
   EuiTextAlign,
-  EuiToolTip
+  EuiToolTip,
+  EuiBadgeGroup,
 } from "@elastic/eui";
 import { DateFromNow } from "@gojek/mlp-ui";
 import PropTypes from "prop-types";
@@ -52,7 +53,7 @@ const VersionListTable = ({
   error,
   activeVersion,
   activeModel,
-  searchCallback,
+  setSearchQuery,
   searchQuery,
   environments,
   ...props
@@ -235,7 +236,7 @@ const VersionListTable = ({
       isLoaded,
       versions,
       expandedRowState.versionIdToExpandedRowMap,
-      activeModel
+      activeModel,
     ]
   );
 
@@ -266,29 +267,29 @@ const VersionListTable = ({
       },
       sortable: true,
       width: "10%",
-      // render: (name, version) => {
-      //   const servingEndpoint = version.endpoints.find(
-      //     endpoint => endpoint.status === "serving"
-      //   );
-      //   const versionPageUrl = `/merlin/projects/${activeModel.project_id}/models/${activeModel.id}/versions/${version.id}/details`;
-      //   return (
-      //     <Fragment>
-      //       <span className="cell-first-column" size={defaultIconSize}>
-      //         <EuiLink onClick={() => navigate(versionPageUrl)}>{name}</EuiLink>
-      //       </span>{" "}
-      //       {moment().diff(version.created_at, "hour") <= 1 && (
-      //         <EuiBadge color="secondary">
-      //           <EuiText size="xs">New</EuiText>
-      //         </EuiBadge>
-      //       )}
-      //       {servingEndpoint && (
-      //         <EuiBadge color={healthColor(servingEndpoint.status)}>
-      //           <EuiText size="xs">{servingEndpoint.status}</EuiText>
-      //         </EuiBadge>
-      //       )}
-      //     </Fragment>
-      //   );
-      // }
+      render: (name, version) => {
+        const servingEndpoint = version.endpoints.find(
+          endpoint => endpoint.status === "serving"
+        );
+        const versionPageUrl = `/merlin/projects/${activeModel.project_id}/models/${activeModel.id}/versions/${version.id}/details`;
+        return (
+          <Fragment>
+            <span className="cell-first-column" size={defaultIconSize}>
+              <EuiLink onClick={() => navigate(versionPageUrl)}>{name}</EuiLink>
+            </span>{" "}
+            {moment().diff(version.created_at, "hour") <= 1 && (
+              <EuiBadge color="secondary">
+                <EuiText size="xs">New</EuiText>
+              </EuiBadge>
+            )}
+            {servingEndpoint && (
+              <EuiBadge color={healthColor(servingEndpoint.status)}>
+                <EuiText size="xs">{servingEndpoint.status}</EuiText>
+              </EuiBadge>
+            )}
+          </Fragment>
+        );
+      }
     },
     {
       field: "mlflow_run_id",
@@ -296,7 +297,7 @@ const VersionListTable = ({
       mobileOptions: {
         fullWidth: true
       },
-      width: "20%",
+      width: "10%",
       render: (run_id, version) => (
         <EuiLink
           href={version.mlflow_url}
@@ -390,13 +391,16 @@ const VersionListTable = ({
               ([key, val]) =>
                 <EuiBadge
                   key={key}
+                  // onClick={() => onChange({query: {text:`labels:${key} in (${val})`}})}
                   onClick={() => {
-                    const queryText = query.text.includes("environment_name:")
-                      ? `${query.text} labels: ${key} in (${val})`
-                      : `labels: ${key} in (${val})`
-                    onChange({queryText})
+                    // setQuery(`labels: ${key} IN (${val})`)
+                    // onChange({query: {text:`labels: ${key} in (${val})`}})
+                    // onChange({query: {text:`labels: ${key} in (${val})`}})
+                    // setQuery(`labels: ${key} IN (${val})`)
+                    setSearchQuery(`labels: ${key} IN (${val})`)
+
                   }}
-                  onClickAriaLabel="search by label">
+                  onClickAriaLabel="Query by label">
                   <EllipsisText text={key} length={9}/>:<EllipsisText text={val} length={9}/>
                 </EuiBadge>
             )
@@ -535,51 +539,41 @@ const VersionListTable = ({
     };
   };
 
-  // const versionData = isLoaded ? versions : [];
-  // const [items,setItems] = useState(versions)
-
-  const [query, setQuery] = useState("")
-
   const onChange = ({ queryText, error }) => {
-    console.log("onChange:",queryText)
+    console.log(queryText)
+    setSearchQuery(queryText)
+    console.log("onchange(), versions.length:", versions.length)
+    setItems(versions)
 
-    // query is using dummy parsed text, to allow to use query with syntax not allowed in parse
-    searchCallback(queryText);
+    // labels: foo in (foo1)
+    // environment_name: dev
 
-
-    const query = new EuiSearchBar.Query.parse("")
-    query.text = queryText
-    setQuery(query)
-
-    console.log("onChange -> searchCallback:", queryText)
-    console.log("onChange -> versions:", versions)
-
-    // if (error) {
-    //   return error;
-    // } else {
-    //   searchCallback(queryText);
-    // }
   };
 
-  // labels: foo in (foo1)
+  // labels: foo IN (foo1)
+  // http://localhost:8080/v1/models/1/versions?cursor=&limit=50&search=labels%3A%20foo%20IN%20%28foo1%29
+  // http://localhost:8080/v1/models/1/versions?cursor=&limit=50&search=labels%3A%20foo%20in%20%28foo1%29
+  // http://localhost:8080/v1/models/1/versions?cursor=&limit=50&search=labels%3Afoo%20in%20%28foo1%29
 
   const search = {
-    query: query,
+    //query: searchQuery,
     onChange: onChange,
+    // query: searchQuery,
     box: {
-      incremental: false
+      incremental: false,
+      schema: null,
     },
-    filters: [
-      {
-        type: "field_value_selection",
-        field: "environment_name",
-        name: "Environment",
-        multiSelect: false,
-        options: environments.map(item => ({
-          value: item.name
-        }))
-      }
-    ]
+    // filters: [
+    //   {
+    //     type: "field_value_selection",
+    //     field: "environment_name",
+    //     name: "Environment",
+    //     multiSelect: false,
+    //     options: environments.map(item => ({
+    //       value: item.name
+    //     }))
+    //   }
+    // ]
   };
 
   const loadingView = isLoaded ? (
@@ -590,18 +584,23 @@ const VersionListTable = ({
     </EuiTextAlign>
   );
 
+  // const versionData = isLoaded ? versions : [];
 
+  // console.log("versions:", versions)
+  const [items, setItems] = useState([])
 
-  return error ? (
+  if (error) return (
     <EuiCallOut
       title="Sorry, there was an error"
       color="danger"
       iconType="alert">
       <p>{error.message}</p>
     </EuiCallOut>
-  ) : activeModel ? (
+  )
+
+  if (activeModel) return (
     <EuiInMemoryTable
-      items={versions}
+      items={items}
       columns={columns}
       loading={!isLoaded}
       itemId="id"
@@ -613,11 +612,9 @@ const VersionListTable = ({
       sorting={{ sort: { field: "Version", direction: "desc" } }}
       cellProps={cellProps}
     />
-  ) : (
-    <EuiTextAlign textAlign="center">
-      <EuiLoadingChart size="xl" mono />
-    </EuiTextAlign>
-  );
+  )
+
+  return null
 };
 
 VersionListTable.propTypes = {
