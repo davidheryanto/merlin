@@ -62,7 +62,7 @@ export const ModelVersionPanelHeader = ({ model, version }) => {
         version.labels && Object.entries(version.labels)
           .map(
             ([key, val]) =>
-              <EuiBadge><EllipsisText text={key} length={"16"} />:<EllipsisText text={val} length={"16"} /></EuiBadge>
+              <EuiBadge key={key}><EllipsisText text={key} length={16} />:<EllipsisText text={val} length={16} /></EuiBadge>
           )
       )
     }

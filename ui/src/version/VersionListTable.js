@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-import React, { useEffect, useState, Fragment } from "react";
+import React, {useEffect, useState, Fragment} from "react";
+import {Collapse} from 'react-collapse';
+
 import {
   EuiBadge, EuiBadgeGroup,
   EuiButtonEmpty,
@@ -33,30 +35,64 @@ import {
   EuiTextAlign,
   EuiToolTip
 } from "@elastic/eui";
-import { DateFromNow } from "@gojek/mlp-ui";
+import {DateFromNow} from "@gojek/mlp-ui";
 import PropTypes from "prop-types";
 
 import VersionEndpointActions from "./VersionEndpointActions";
-import { Link, navigate } from "@reach/router";
+import {Link, navigate} from "@reach/router";
 import EllipsisText from "react-ellipsis-text";
+import useCollapse from 'react-collapsed';
+
 
 const moment = require("moment");
 
 const defaultTextSize = "s";
 const defaultIconSize = "s";
 
+const CollapsibleLabelsPanel = ({labels, query, labelOnClick}) => {
+  const {getCollapseProps, getToggleProps, isExpanded} = useCollapse();
+
+  return (
+    <EuiBadgeGroup>
+      {labels && Object.entries(labels)
+        .map(
+          ([key, val], index) =>
+            (isExpanded || index < 2) &&
+            <EuiBadge
+              key={key}
+              onClick={() => {
+                const queryText = `labels: ${key} in (${val})`
+                labelOnClick({queryText})
+              }}
+              onClickAriaLabel="search by label">
+              <EllipsisText text={key} length={9}/>:<EllipsisText text={val} length={9}/>
+            </EuiBadge>
+        )
+      }
+
+      {
+        (!isExpanded && labels && Object.keys(labels).length > 2) &&
+          <EuiLink {...getToggleProps()}>
+            {isExpanded ? "" : `Show All [${Object.keys(labels).length}]`}
+          </EuiLink>
+      }
+
+    </EuiBadgeGroup>
+  )
+}
+
 const VersionListTable = ({
-  versions,
-  fetchVersions,
-  isLoaded,
-  error,
-  activeVersion,
-  activeModel,
-  searchCallback,
-  searchQuery,
-  environments,
-  ...props
-}) => {
+                            versions,
+                            fetchVersions,
+                            isLoaded,
+                            error,
+                            activeVersion,
+                            activeModel,
+                            searchCallback,
+                            searchQuery,
+                            environments,
+                            ...props
+                          }) => {
   const healthColor = status => {
     switch (status) {
       case "serving":
@@ -210,7 +246,7 @@ const VersionListTable = ({
                       </EuiFlexItem>
                     </EuiFlexGroup>
                     {index !== version.endpoints.length - 1 && (
-                      <EuiHorizontalRule />
+                      <EuiHorizontalRule/>
                     )}
                   </div>
                 ));
@@ -240,7 +276,7 @@ const VersionListTable = ({
   );
 
   const toggleDetails = version => {
-    const expandedRows = { ...expandedRowState.versionIdToExpandedRowMap };
+    const expandedRows = {...expandedRowState.versionIdToExpandedRowMap};
     if (expandedRows[version.id]) {
       delete expandedRows[version.id];
     } else {
@@ -383,37 +419,42 @@ const VersionListTable = ({
       field: "labels",
       name: "Labels",
       width: "20%",
-      render: labels =>
-        <EuiBadgeGroup>
-          {labels && Object.entries(labels)
-            .map(
-              ([key, val]) =>
-                <EuiBadge
-                  key={key}
-                  onClick={() => {
-                    const queryText = query.text.includes("environment_name:")
-                      ? `${query.text} labels: ${key} in (${val})`
-                      : `labels: ${key} in (${val})`
-                    onChange({queryText})
-                  }}
-                  onClickAriaLabel="search by label">
-                  <EllipsisText text={key} length={9}/>:<EllipsisText text={val} length={9}/>
-                </EuiBadge>
-            )
-          }
-        </EuiBadgeGroup>
+      render: labels => <CollapsibleLabelsPanel labels={labels} query={query} labelOnClick={onChange}/>
+      // render: labels => {
+      //   return (
+      //     <EuiBadgeGroup>
+      //       {labels && Object.entries(labels)
+      //         .map(
+      //           ([key, val], index) =>
+      //             <EuiBadge
+      //               key={key}
+      //               onClick={() => {
+      //                 const queryText = query.text.includes("environment_name:")
+      //                   ? `${query.text} labels: ${key} in (${val})`
+      //                   : `labels: ${key} in (${val})`
+      //                 onChange({queryText})
+      //               }}
+      //               onClickAriaLabel="search by label">
+      //               <EllipsisText text={key} length={9}/>:<EllipsisText text={val} length={9}/>
+      //             </EuiBadge>
+      //         )
+      //       }
+      //     </EuiBadgeGroup>
+      //   )
+      // }
+
     },
     {
       field: "created_at",
       name: "Created",
       width: "10%",
-      render: date => <DateFromNow date={date} size={defaultTextSize} />
+      render: date => <DateFromNow date={date} size={defaultTextSize}/>
     },
     {
       field: "updated_at",
       name: "Updated",
       width: "10%",
-      render: date => <DateFromNow date={date} size={defaultTextSize} />
+      render: date => <DateFromNow date={date} size={defaultTextSize}/>
     },
     {
       field: "id",
@@ -453,7 +494,7 @@ const VersionListTable = ({
                 }>
                 <Link
                   to={`${version.id}/deploy`}
-                  state={{ model: activeModel, version: version }}>
+                  state={{model: activeModel, version: version}}>
                   <EuiButtonEmpty iconType="importAction" size="xs">
                     <EuiText size="xs">
                       {activeModel.type !== "pyfunc_v2"
@@ -476,7 +517,7 @@ const VersionListTable = ({
                   }>
                   <Link
                     to={`${version.id}/create-job`}
-                    state={{ model: activeModel, version: version }}>
+                    state={{model: activeModel, version: version}}>
                     <EuiButtonEmpty iconType="storage" size="xs">
                       <EuiText size="xs">Start Batch Job</EuiText>
                     </EuiButtonEmpty>
@@ -530,7 +571,7 @@ const VersionListTable = ({
 
   const cellProps = item => {
     return {
-      style: versionCanBeExpanded(item) ? { cursor: "pointer" } : {},
+      style: versionCanBeExpanded(item) ? {cursor: "pointer"} : {},
       onClick: () => toggleDetails(item)
     };
   };
@@ -540,9 +581,10 @@ const VersionListTable = ({
 
   const [query, setQuery] = useState("")
 
-  const onChange = ({ queryText, error }) => {
-    console.log("onChange:",queryText)
+  const onChange = ({queryText, error}) => {
+    console.log("onChange:", queryText)
 
+    queryText = queryText.replace(/\(labels\\.*\)/i,"").trim()
     // query is using dummy parsed text, to allow to use query with syntax not allowed in parse
     searchCallback(queryText);
 
@@ -560,6 +602,7 @@ const VersionListTable = ({
     //   searchCallback(queryText);
     // }
   };
+
 
   // labels: foo in (foo1)
 
@@ -586,10 +629,9 @@ const VersionListTable = ({
     "No items found"
   ) : (
     <EuiTextAlign textAlign="center">
-      <EuiLoadingChart size="xl" mono />
+      <EuiLoadingChart size="xl" mono/>
     </EuiTextAlign>
   );
-
 
 
   return error ? (
@@ -610,12 +652,12 @@ const VersionListTable = ({
       hasActions={true}
       message={loadingView}
       search={search}
-      sorting={{ sort: { field: "Version", direction: "desc" } }}
+      sorting={{sort: {field: "Version", direction: "desc"}}}
       cellProps={cellProps}
     />
   ) : (
     <EuiTextAlign textAlign="center">
-      <EuiLoadingChart size="xl" mono />
+      <EuiLoadingChart size="xl" mono/>
     </EuiTextAlign>
   );
 };
